@@ -15,8 +15,12 @@ RUN apt-get update && apt-get install -y \
     libzip-dev \
     && docker-php-ext-configure gd --with-freetype --with-jpeg \
     && docker-php-ext-install pdo pdo_mysql mbstring exif pcntl bcmath gd zip
+
 # Install Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
+
+# Download TiDB CA certificate
+RUN curl -sSL https://letsencrypt.org/certs/isrgrootx1.pem -o /etc/ssl/certs/tidb-ca.pem
 
 # Set working directory
 WORKDIR /var/www/html
@@ -38,17 +42,12 @@ RUN a2enmod rewrite
 # Update Apache config to point to public/
 RUN sed -i 's|/var/www/html|/var/www/html/public|g' /etc/apache2/sites-available/000-default.conf
 
-# Expose port
-EXPOSE 80
-
-# Start Apache
-CMD ["apache2-foreground"]
-
-
-
 # Copy entrypoint script
 COPY docker-entrypoint.sh /usr/local/bin/
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+
+# Expose port
+EXPOSE 80
 
 # Start with entrypoint
 ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
