@@ -1,6 +1,6 @@
 FROM php:8.2-apache
 
-# Install dependencies
+# Install dependencies + ca-certificates
 RUN apt-get update && apt-get install -y \
     ca-certificates \
     libpng-dev \
@@ -19,8 +19,9 @@ RUN apt-get update && apt-get install -y \
 # Install Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
-# Download TiDB CA certificate
-RUN curl -sSL https://letsencrypt.org/certs/isrgrootx1.pem -o /etc/ssl/certs/tidb-ca.pem
+# Download and install TiDB/Let's Encrypt CA certificate into system store
+RUN curl -fsSL https://letsencrypt.org/certs/isrgrootx1.pem -o /usr/local/share/ca-certificates/isrgrootx1.crt \
+    && update-ca-certificates
 
 # Set working directory
 WORKDIR /var/www/html
