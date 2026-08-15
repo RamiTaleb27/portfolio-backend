@@ -8,9 +8,29 @@ use Illuminate\Support\Facades\Route;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\ValidationException;
+use Illuminate\Support\Facades\Hash;
 
 
 
+Route::post('/token-login', function (Request $request) {
+    $request->validate([
+        'email' => 'required|email',
+        'password' => 'required',
+    ]);
+
+    $user = \App\Models\User::where('email', $request->email)->first();
+
+    if (!$user || !Hash::check($request->password, $user->password)) {
+        return response()->json(['message' => 'Invalid credentials'], 401);
+    }
+
+    $token = $user->createToken('portfolio')->plainTextToken;
+
+    return response()->json([
+        'token' => $token,
+        'user' => $user,
+    ]);
+});
 
 
 // CUSTOM API AUTH (returns JSON, no redirects)
