@@ -6,12 +6,15 @@ use App\Http\Controllers\Api\ProjectController;
 use App\Http\Controllers\Api\SkillController;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Validation\ValidationException;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Str;
 
+// ============================================
+// PUBLIC ROUTES
+// ============================================
 
-
+// Simple token login (NO Sanctum needed!)
 Route::post('/token-login', function (Request $request) {
     $request->validate([
         'email' => 'required|email',
@@ -24,45 +27,15 @@ Route::post('/token-login', function (Request $request) {
         return response()->json(['message' => 'Invalid credentials'], 401);
     }
 
-    $token = $user->createToken('portfolio')->plainTextToken;
+    // Generate token and save to remember_token column
+    $token = Str::random(60);
+    $user->remember_token = $token;
+    $user->save();
 
     return response()->json([
         'token' => $token,
-        'user' => $user,
+        'user' => $user->only(['id', 'name', 'email']),
     ]);
-});
-
-
-// CUSTOM API AUTH (returns JSON, no redirects)
-Route::middleware(['web'])->group(function () {
-    
-    Route::post('/auth/login', function (Request $request) {
-        $request->validate([
-            'email' => 'required|email',
-            'password' => 'required',
-        ]);
-
-        if (!Auth::attempt($request->only('email', 'password'))) {
-            throw ValidationException::withMessages([
-                'email' => ['Invalid credentials.'],
-            ]);
-        }
-
-        $request->session()->regenerate();
-
-        return response()->json([
-            'user' => Auth::user(),
-            'message' => 'Login successful'
-        ]);
-    });
-
-    Route::post('/auth/logout', function (Request $request) {
-        Auth::guard('web')->logout();
-        $request->session()->invalidate();
-        $request->session()->regenerateToken();
-        return response()->json(['message' => 'Logged out']);
-    })->middleware('auth');
-
 });
 
 // Public portfolio data
@@ -71,12 +44,26 @@ Route::get('/portfolio', [PortfolioController::class, 'index']);
 // Public contact form
 Route::post('/messages', [MessageController::class, 'store']);
 
-// Protected routes (require Sanctum auth)
-Route::middleware(['auth:sanctum'])->group(function () {
+
+// ============================================
+// PROTECTED ROUTES (Custom Token Auth)
+// ============================================
+
+Route::middleware([\App\Http\Middleware\TokenAuth::class])->group(function () {
     
     // User info
     Route::get('/user', function (Request $request) {
-        return $request->user();
+        return Auth::user();
+    });
+
+    // Token logout
+    Route::post('/logout', function (Request $request) {
+        $user = Auth::user();
+        if ($user) {
+            $user->remember_token = null;
+            $user->save();
+        }
+        return response()->json(['message' => 'Logged out']);
     });
 
     // Projects CRUD
@@ -90,4 +77,5 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::get('/messages/{message}', [MessageController::class, 'show']);
     Route::patch('/messages/{message}', [MessageController::class, 'update']);
     Route::delete('/messages/{message}', [MessageController::class, 'destroy']);
-});
+
+}); // ← MAKE SURE THIS CLOSING }); IS THERE!
