@@ -1,6 +1,6 @@
 FROM php:8.2-apache
 
-# Install dependencies + ca-certificates
+# Install dependencies
 RUN apt-get update && apt-get install -y \
     ca-certificates \
     libpng-dev \
@@ -19,7 +19,7 @@ RUN apt-get update && apt-get install -y \
 # Install Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
-# Download and install TiDB/Let's Encrypt CA certificate into system store
+# Download TiDB CA certificate
 RUN curl -fsSL https://letsencrypt.org/certs/isrgrootx1.pem -o /usr/local/share/ca-certificates/isrgrootx1.crt \
     && update-ca-certificates
 
@@ -29,13 +29,17 @@ WORKDIR /var/www/html
 # Copy application
 COPY . .
 
+# Create storage directories and set permissions BEFORE composer install
+RUN mkdir -p storage/framework/cache storage/framework/sessions storage/framework/views storage/logs bootstrap/cache \
+    && chown -R www-data:www-data /var/www/html \
+    && chmod -R 775 /var/www/html/storage \
+    && chmod -R 775 /var/www/html/bootstrap/cache
+
 # Install PHP dependencies
 RUN composer install --no-dev --optimize-autoloader
 
-# Set permissions
-RUN chown -R www-data:www-data /var/www/html \
-    && chmod -R 755 /var/www/html/storage \
-    && chmod -R 755 /var/www/html/bootstrap/cache
+# Create storage link
+RUN php artisan storage:link || true
 
 # Enable Apache rewrite
 RUN a2enmod rewrite
@@ -46,6 +50,11 @@ RUN sed -i 's|/var/www/html|/var/www/html/public|g' /etc/apache2/sites-available
 # Copy entrypoint script
 COPY docker-entrypoint.sh /usr/local/bin/
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+
+# Final permission fix
+RUN chown -R www-data:www-data /var/www/html \
+    && chmod -R 775 /var/www/html/storage \
+    && chmod -R 775 /var/www/html/bootstrap/cache
 
 # Expose port
 EXPOSE 80
