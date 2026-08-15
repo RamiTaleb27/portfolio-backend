@@ -26,11 +26,11 @@ RUN curl -fsSL https://letsencrypt.org/certs/isrgrootx1.pem -o /usr/local/share/
 # Set working directory
 WORKDIR /var/www/html
 
-# Copy application
-COPY . .
+# BUST CACHE - change this number to force fresh COPY
+RUN echo "cache-bust-1"
 
-# Verify controllers exist (busts cache!)
-RUN ls -la app/Http/Controllers/Api/
+# Copy application (now forced to re-run)
+COPY . .
 
 # Create storage directories and fix permissions
 RUN mkdir -p storage/framework/cache storage/framework/sessions storage/framework/views storage/logs bootstrap/cache \
