@@ -29,7 +29,7 @@ WORKDIR /var/www/html
 # Copy application
 COPY . .
 
-# Create storage directories and set permissions BEFORE composer install
+# Create storage directories and fix permissions
 RUN mkdir -p storage/framework/cache storage/framework/sessions storage/framework/views storage/logs bootstrap/cache \
     && chown -R www-data:www-data /var/www/html \
     && chmod -R 775 /var/www/html/storage \
