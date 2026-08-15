@@ -29,6 +29,9 @@ WORKDIR /var/www/html
 # Copy application
 COPY . .
 
+# Verify controllers exist (busts cache!)
+RUN ls -la app/Http/Controllers/Api/
+
 # Create storage directories and fix permissions
 RUN mkdir -p storage/framework/cache storage/framework/sessions storage/framework/views storage/logs bootstrap/cache \
     && chown -R www-data:www-data /var/www/html \
